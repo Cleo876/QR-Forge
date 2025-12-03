@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Forge - Forge™ HTML Toolsets</title>
+    <script>
+        const TOOL_VERSION = '1.8.3';
+    </script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -6px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
+
+        .preview-pattern {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+
+        .icon-btn.active {
+            background-color: #e0e7ff;
+            border-color: #4f46e5;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between shadow-sm flex-none z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                <i class="fa-solid fa-qrcode"></i>
+            </div>
+            <div class="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-2">
+                <h1 class="text-lg md:text-xl font-bold tracking-tight text-gray-900 leading-tight">QR Forge</h1>
+                <span id="app-version" class="text-xs text-gray-500 font-normal"></span>
+            </div>
+        </div>
+        <div class="text-sm text-gray-500 hidden sm:block font-medium tracking-wide">
+            Forge™ HTML Toolset
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Preview Panel (Top on Mobile, Right on Desktop) -->
+        <div class="bg-gray-50 flex flex-col items-center justify-center p-6 relative preview-pattern border-b md:border-b-0 md:border-l border-gray-200 order-1 md:order-2 h-[45vh] md:h-auto md:flex-1 w-full overflow-hidden">
+            
+            <div class="bg-transparent flex flex-col items-center justify-center transition-all duration-300 w-full h-full" id="canvas-container">
+                <!-- w-auto h-auto ensures it scales down visually while keeping high internal resolution -->
+                <canvas id="qr-canvas" class="max-w-full max-h-full w-auto h-auto object-contain drop-shadow-xl"></canvas>
+            </div>
+
+            <div class="absolute bottom-4 right-4 md:static md:mt-8">
+                <button id="download-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 md:py-3 md:px-8 rounded-lg shadow-lg hover:shadow-xl transition flex items-center gap-2 transform active:scale-95 text-sm md:text-base">
+                    <i class="fa-solid fa-download"></i> <span class="hidden md:inline">Download PNG</span><span class="md:hidden">Save</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Panel (Bottom on Mobile, Left on Desktop) -->
+        <div class="w-full md:w-96 bg-white overflow-y-auto p-6 flex-1 md:flex-none z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] md:shadow-none order-2 md:order-1">
+            
+            <div class="space-y-6 pb-20 md:pb-0">
+                <!-- Content Section -->
+                <div>
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Content</h2>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">URL or Text</label>
+                    <textarea id="qr-text" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-sm transition" placeholder="https://example.com">https://example.com</textarea>
+                </div>
+
+                <hr class="border-gray-100">
+
+                <!-- Appearance Section -->
+                <div>
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Colors & Quality</h2>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Foreground</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="qr-color" value="#000000" class="h-8 w-8 rounded cursor-pointer border-0 p-0">
+                                <span class="text-xs text-gray-400 font-mono" id="qr-color-hex">#000000</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Background</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="bg-color" value="#ffffff" class="h-8 w-8 rounded cursor-pointer border-0 p-0">
+                                <span class="text-xs text-gray-400 font-mono" id="bg-color-hex">#ffffff</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium text-gray-700">Resolution (px)</label>
+                            <span class="text-xs text-gray-500" id="size-val">1024px</span>
+                        </div>
+                        <input type="range" id="qr-size" min="300" max="2000" step="50" value="1024" class="w-full">
+                    </div>
+                </div>
+
+                <hr class="border-gray-100">
+
+                <!-- Corner Styling Section -->
+                <div>
+                    <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Corner Styling</h2>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Outer Frame</label>
+                            <select id="corner-outer" class="custom-select w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                                <option value="square">Square (Default)</option>
+                                <option value="rounded">Rounded</option>
+                                <option value="circle">Circle</option>
+                                <option value="leaf">Leaf</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Inner Eye</label>
+                            <select id="corner-inner" class="custom-select w-full p-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                                <option value="square">Square (Default)</option>
+                                <option value="rounded">Rounded</option>
+                                <option value="circle">Circle</option>
+                                <option value="diamond">Diamond</option>
+                                <option value="star">Star</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-gray-100">
+
+                <!-- Logo / Icon Section -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Center Logo / Icon</h2>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex bg-gray-100 p-1 rounded-lg mb-4">
+                        <button id="tab-upload" class="flex-1 py-1.5 text-xs font-medium rounded-md shadow-sm bg-white text-gray-800 transition">Upload Image</button>
+                        <button id="tab-icon" class="flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 transition">Choose Icon</button>
+                    </div>
+                    
+                    <!-- Upload Panel -->
+                    <div id="panel-upload" class="mb-4">
+                        <label class="flex flex-col items-center px-4 py-4 bg-gray-50 text-gray-500 rounded-lg border-2 border-dashed border-gray-300 cursor-pointer hover:bg-gray-100 transition group">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl mb-2 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                            <span class="text-xs">Click to upload logo</span>
+                            <input type='file' id="logo-input" class="hidden" accept="image/*" />
+                        </label>
+                        <div id="file-name" class="hidden text-xs text-gray-500 mt-2 flex items-center gap-2">
+                            <i class="fa-solid fa-check text-green-500"></i> <span class="truncate" id="file-name-text"></span>
+                            <button id="remove-logo" class="ml-auto text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Icon Library Panel -->
+                    <div id="panel-icon" class="mb-4 hidden">
+                        <div class="grid grid-cols-5 gap-2 mb-4" id="icon-grid">
+                            <!-- Icons injected by JS -->
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Icon Color</label>
+                            <div class="flex items-center gap-2">
+                                <input type="color" id="icon-color" value="#4f46e5" class="h-8 w-8 rounded cursor-pointer border-0 p-0">
+                                <span class="text-xs text-gray-400 font-mono" id="icon-color-hex">#4f46e5</span>
+                            </div>
+                        </div>
+                        <button id="remove-icon" class="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 hidden">
+                            <i class="fa-solid fa-trash"></i> Remove Icon
+                        </button>
+                    </div>
+
+                    <!-- Shared Size Control -->
+                    <div id="logo-controls" class="opacity-50 pointer-events-none transition-opacity duration-200">
+                        <div class="flex justify-between mb-1">
+                            <label class="text-sm font-medium text-gray-700">Logo Scale</label>
+                            <span class="text-xs text-gray-500" id="logo-size-val">22%</span>
+                        </div>
+                        <input type="range" id="logo-size" min="10" max="30" step="1" value="22" class="w-full">
+                        <p class="text-[10px] text-gray-400 mt-1">Limited to 30% for scannability.</p>
+                    </div>
+                </div>
+
+                <button id="generate-btn" class="w-full bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-medium py-2 px-4 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-rotate"></i> Manual Refresh
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Icon Data (SVG Paths) ---
+        // All paths are normalized to 512x512 viewbox approximately
+        const ICONS = {
+            'wifi': { path: "M256 416c-10.7 0-20.9-4.5-28.3-12.5L75.6 244.3c-14-15.2-12.8-38.8 2.7-52.6C123.6 151.4 187.9 128 256 128s132.4 23.4 177.7 63.7c15.5 13.8 16.7 37.4 2.7 52.6L284.3 403.5c-7.4 8-17.6 12.5-28.3 12.5zM32 192C11 192 0 174.2 0 174.2c0-1.7 19.8-65.7 114.7-112.5C158.4 40.2 206.5 32 256 32s97.6 8.2 141.3 29.7C492.2 108.5 512 172.5 512 174.2 512 174.2 501 192 480 192c-15.6 0-25.5-12.7-32.5-19.8-34.9-35.3-90-64.2-191.5-64.2s-156.6 28.9-191.5 64.2c-7 7.1-16.9 19.8-32.5 19.8z", viewbox: "0 0 512 512" },
+            'phone': { path: "M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z", viewbox: "0 0 512 512" },
+            'envelope': { path: "M64 112c-8.8 0-16 7.2-16 16v22.1L220.5 291.7c20.7 17 50.4 17 71.1 0L464 150.1V128c0-8.8-7.2-16-16-16H64zM48 212.2V384c0 8.8 7.2 16 16 16H448c8.8 0 16-7.2 16-16V212.2L322 328.8c-38.4 31.5-93.7 31.5-132 0L48 212.2zM0 128C0 92.7 28.7 64 64 64H448c35.3 0 64 28.7 64 64V384c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128z", viewbox: "0 0 512 512" },
+            'location': { path: "M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z", viewbox: "0 0 384 512" },
+            'globe': { path: "M296 112l-96 0c-13.3 0-24 10.7-24 24l0 96c0 13.3 10.7 24 24 24l96 0c13.3 0 24-10.7 24-24l0-96c0-13.3-10.7-24-24-24zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256-208c-36.9 0-70.6 10-99.3 27.5C136.2 92 112 111.4 112 136l0 96c0 13.3 10.7 24 24 24l96 0c13.3 0 24-10.7 24-24l0-96c0-13.3 10.7-24 24-24zm0 416c114.9 0 208-93.1 208-208c0-36.9-10-70.6-27.5-99.3C420 176.2 400.6 200 376 200l-96 0c-13.3 0-24 10.7-24 24l0 96c0 13.3 10.7 24 24 24l96 0c13.3 0 24-10.7 24-24l0-96c0-13.3 10.7-24 24-24z", viewbox: "0 0 512 512" },
+            'facebook': { path: "M504 256C504 119 393 8 256 8S8 119 8 256c0 123.78 90.69 226.38 209.25 245V327.69h-63V256h63v-54.64c0-62.15 37-96.48 93.67-96.48 27.14 0 55.52 4.84 55.52 4.84v61h-31.28c-30.8 0-40.41 19.12-40.41 38.73V256h68.78l-11 71.69h-57.78V501C413.31 482.38 504 379.78 504 256z", viewbox: "0 0 512 512" },
+            'instagram': { path: "M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.5 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z", viewbox: "0 0 448 512" },
+            'twitter': { path: "M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z", viewbox: "0 0 512 512" },
+            'linkedin': { path: "M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z", viewbox: "0 0 448 512" },
+            'youtube': { path: "M549.655 124.083c-6.281-23.65-24.787-42.276-48.284-48.597C458.781 64 288 64 288 64S117.22 64 74.629 75.486c-23.497 6.322-42.003 24.947-48.284 48.597-11.412 42.867-11.412 132.305-11.412 132.305s0 89.438 11.412 132.305c6.281 23.65 24.787 41.5 48.284 47.821C117.22 448 288 448 288 448s170.78 0 213.371-11.486c23.497-6.321 42.003-24.171 48.284-47.821 11.412-42.867 11.412-132.305 11.412-132.305s0-89.438-11.412-132.305zm-317.51 213.508V175.185l142.739 81.205-142.739 81.201z", viewbox: "0 0 576 512" },
+            'tiktok': { path: "M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z", viewbox: "0 0 448 512" },
+            'shop': { path: "M112 112c0-26.5 21.5-48 48-48s48 21.5 48 48V160H112V112zm160 48V112c0-53-43-96-96-96s-96 43-96 96v48H64V544h384V160H272zm48 48v32c0 8.8 7.2 16 16 16s16-7.2 16-16V208h64v288H96V208h64v32c0 8.8 7.2 16 16 16s16-7.2 16-16V208h80z", viewbox: "0 0 512 512" },
+            'star': { path: "M256 38.013c8.987 0 17.388 5.485 21.438 13.988l47.95 100.325 109.863 15.113c9.35 1.288 17.025 8.1 19.8 17.113 2.787 9.012-.663 18.775-8.8 24.875L365.413 283.4l19.5 107.825c1.625 9.175-2.225 18.525-9.838 23.863-7.613 5.337-17.65 5.25-25.175-.238L256 361.325l-93.9 53.525c-7.538 5.488-17.563 5.575-25.175.238-7.613-5.338-11.463-14.688-9.838-23.863l19.5-107.825L65.75 209.425c-8.138-6.1-11.588-15.863-8.8-24.875 2.775-9.013 10.45-15.825 19.8-17.113l109.863-15.113 47.95-100.325C238.613 43.5 247.013 38.013 256 38.013z", viewbox: "0 0 512 512" },
+            'heart': { path: "M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z", viewbox: "0 0 512 512" },
+            'user': { path: "M256 256c61.9 0 112-50.1 112-112S317.9 32 256 32 144 82.1 144 144s50.1 112 112 112zm151.7 42.1C359.1 268.3 309.2 256 256 256s-103.1 12.3-151.7 42.1C43.3 335.6 0 388.9 0 448c0 17.7 14.3 32 32 32h448c17.7 0 32-14.3 32-32 0-59.1-43.3-112.4-104.3-149.9z", viewbox: "0 0 512 512" },
+            
+            // --- NEW ADDITIONS ---
+            'rocket': { path: "M19.47 423.5L88 355l-19.5-19.5L.12 404c-3.12 11.1 2.9 21.8 13.98 22.8l5.37-3.3zm203.2-225.2c-52-52.1-136.6-52-188.6 0l11.3 11.3c23.4-23.4 61.4-23.4 84.9 0l71.2 71.2c23.4 23.4 23.4 61.4 0 84.9l11.3 11.3c52-52.1 52.1-136.7-10.1-178.7zm283.4-44.1C473 114.7 400.9 91.5 328.7 85.5c-42.6-3.6-77.9 28.5-83.3 69.9l22.7 22.7c-5.8 45.3 2.1 82.2 24 104.1l80.5 80.5c21.9 21.9 58.8 29.8 104.1 24l22.7 22.7c41.3-5.4 73.5-40.7 69.9-83.3-6.1-72.2-29.2-144.3-63.2-171.9zm-96.6 200.5c-15.6 15.6-40.9 15.6-56.6 0s-15.6-40.9 0-56.6 40.9-15.6 56.6 0 15.6 40.9 0 56.6z", viewbox: "0 0 512 512" },
+            'thumbs-up': { path: "M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z", viewbox: "0 0 24 24" },
+            'thumbs-down': { path: "M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v1.91l.01.01L1 14c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z", viewbox: "0 0 24 24" },
+            'github': { path: "M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z", viewbox: "0 0 496 512" },
+            'bed': { path: "M32 32c-17.7 0-32 14.3-32 32V320H288V160c0-17.7-14.3-32-32-32H96c-17.7 0-32-14.3-32 32V32H32zM64 32c0-17.7 14.3-32 32-32H480c17.7 0 32 14.3 32 32V288c0 17.7-14.3-32-32 32H320V192c0-17.7-14.3-32-32-32H64V32zM0 352c0-17.7 14.3-32 32-32H480c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V352z", viewbox: "0 0 512 512" },
+            'laptop': { path: "M0 64C0 28.7 28.7 0 64 0H224V128c0 17.7 14.3 32 32 32H384v29.6C368.4 176.2 344 160 316 160c-15.9 0-30.8 5.2-42.9 14.1c-14.7-8.9-31.8-14.1-50.1-14.1c-53 0-96 43-96 96c0 53 43 96 96 96c31.8 0 60.1-15.5 77.3-39.6c13.7 17.7 34.9 29.8 58.7 31.3V352h32c17.7 0 32 14.3 32 32v64H160c-17.7 0-32 14.3-32 32s14.3 32 32 32h352c17.7 0 32-14.3 32-32V352c0-17.7-14.3-32-32-32H480V256c0-17.7-14.3-32-32-32s-32 14.3-32 32v96H384V160h32c17.7 0 32-14.3 32-32V0h64c35.3 0 64 28.7 64 64V352h32c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V384H544V64z", viewbox: "0 0 512 512" },
+            'mobile': { path: "M272 0H176c-26.5 0-48 21.5-48 48v288c0 26.5 21.5 48 48 48h96c26.5 0 48-21.5 48-48V48c0-26.5-21.5-48-48-48zM160 128h128v192H160V128zm112-48c0 8.8-7.2 16-16 16h-64c-8.8 0-16-7.2-16-16s7.2-16 16-16h64c8.8 0 16 7.2 16 16zm-48 272c-8.8 0-16-7.2-16-16s7.2-16 16-16 16 7.2 16 16-7.2 16-16 16z", viewbox: "0 0 448 512" }, // Mobile/Smartphone
+            'js': { path: "M448 96c0-35.3-28.7-64-64-64H64C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.8-19.9-11.3l-.6 0c-8.7 0-15.6 5.8-18.4 13.8l-1.3 6.6c-.7 1.8-1.1 3.7-1.1 5.6 0 8.3 6.7 15 15 15h.6c1.2 0 2.3-.2 3.4-.7 5.1-2.1 9.7-5.3 13.5-9.3l4.3-4.8 14.1 14.1-4.3 4.8c-7.9 8.8-17.7 15.6-28.5 19.8-7.3 2.9-15.1 4.4-23.1 4.4-19.2 0-37.1-8.5-49.3-23.3l0 0c-6.6-8.2-10.2-18.5-10.2-29.2 0-11.1 3.9-21.6 11.1-29.9l0 0c12.2-14.7 30-23.1 49.1-23.1 10.3 0 20.3 2.5 29.5 7.2 7.7 4 14.6 9.4 20.4 16l4.6 5.2-14.7 13.6-4.2-4.7zM164.7 301.9c-23.8 12.8-50.5 19.5-77.5 19.5-29.5 0-58-7.9-83.3-22.9l-2.6-1.6 15.6-26 2.6 1.6c19.8 11.7 42.1 17.9 65.1 17.9 21.2 0 41.5-5.5 59.9-16.1l2.3-1.3-16.1-26.6-2.4 1.4c-12.8 7.4-27.2 11.3-42.2 11.3-15.1 0-29.6-4-42.4-11.6l-2.4-1.4 16.1-26.5 2.3 1.4c18.5 10.7 39.4 16.3 60.9 16.3 24.3 0 47.9-7.1 68.3-20.4l2.5-1.6 14.6 24.4-2.5 1.6z", viewbox: "0 0 448 512" }, // Javascript logo
+            'code': { path: "M395.5 267.5l-99.9 99.9c-4.7 4.7-12.3 4.7-17 0l-19.8-19.8c-4.7-4.7-4.7-12.3 0-17l64.2-64.2-64.2-64.2c-4.7-4.7-4.7-12.3 0-17l19.8-19.8c4.7-4.7 12.3-4.7 17 0l99.9 99.9c4.7 4.7 4.7 12.3 0 17zm-294 0l99.9-99.9c4.7-4.7 4.7-12.3 0-17l-19.8-19.8c-4.7-4.7-12.3-4.7-17 0l-99.9 99.9c-4.7 4.7-4.7 12.3 0-17l99.9 99.9c4.7 4.7 12.3 4.7 17 0l19.8-19.8c4.7-4.7 4.7-12.3 0-17l-99.9-99.9z", viewbox: "0 0 512 512" },
+            'verified': { path: "M14.6563 5.24291C15.4743 5.88358 16 6.8804 16 8C16 9.11964 15.4743 10.1165 14.6562 10.7572C14.7816 11.7886 14.4485 12.8652 13.6568 13.6569C12.8651 14.4486 11.7885 14.7817 10.7571 14.6563C10.1164 15.4743 9.1196 16 8 16C6.88038 16 5.88354 15.4743 5.24288 14.6562C4.21141 14.7817 3.13481 14.4485 2.34312 13.6568C1.55143 12.8652 1.2183 11.7886 1.34372 10.7571C0.525698 10.1164 0 9.1196 0 8C0 6.88038 0.525715 5.88354 1.34376 5.24288C1.21834 4.21141 1.55147 3.13481 2.34316 2.34312C3.13485 1.55143 4.21145 1.2183 5.24291 1.34372C5.88358 0.525698 6.8804 0 8 0C9.11964 0 10.1165 0.525732 10.7572 1.3438C11.7886 1.21838 12.8652 1.55152 13.6569 2.3432C14.4486 3.13488 14.7817 4.21146 14.6563 5.24291ZM12.2071 6.20711L10.7929 4.79289L7 8.58579L5.20711 6.79289L3.79289 8.20711L7 11.4142L12.2071 6.20711Z", viewbox: "0 0 16 16" }
+        };
+
+        // --- Elements ---
+        const qrCanvas = document.getElementById('qr-canvas');
+        const textInput = document.getElementById('qr-text');
+        const colorInput = document.getElementById('qr-color');
+        const bgColorInput = document.getElementById('bg-color');
+        const sizeInput = document.getElementById('qr-size');
+        const cornerOuterSelect = document.getElementById('corner-outer');
+        const cornerInnerSelect = document.getElementById('corner-inner');
+        const logoInput = document.getElementById('logo-input');
+        const logoSizeInput = document.getElementById('logo-size');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const logoControls = document.getElementById('logo-controls');
+        
+        // Tabs
+        const tabUpload = document.getElementById('tab-upload');
+        const tabIcon = document.getElementById('tab-icon');
+        const panelUpload = document.getElementById('panel-upload');
+        const panelIcon = document.getElementById('panel-icon');
+        const iconGrid = document.getElementById('icon-grid');
+        const iconColorInput = document.getElementById('icon-color');
+        const iconColorHex = document.getElementById('icon-color-hex');
+        const removeIconBtn = document.getElementById('remove-icon');
+
+        // Label updates
+        const colorHex = document.getElementById('qr-color-hex');
+        const bgHex = document.getElementById('bg-color-hex');
+        const sizeVal = document.getElementById('size-val');
+        const logoSizeVal = document.getElementById('logo-size-val');
+        const fileNameDiv = document.getElementById('file-name');
+        const fileNameText = document.getElementById('file-name-text');
+        const removeLogoBtn = document.getElementById('remove-logo');
+
+        document.getElementById('app-version').textContent = 'v' + TOOL_VERSION;
+
+        // State
+        let uploadedLogoImg = null;
+        let selectedIcon = null;
+        let activeTab = 'upload'; 
+
+        // --- Initialization ---
+
+        // Populate Icons
+        Object.keys(ICONS).forEach(key => {
+            const btn = document.createElement('button');
+            btn.className = 'icon-btn h-10 w-10 border border-gray-200 rounded hover:bg-gray-50 flex items-center justify-center text-gray-600 transition';
+            // Simple SVG render for preview
+            const icon = ICONS[key];
+            btn.innerHTML = `<svg viewBox="${icon.viewbox}" class="w-5 h-5 fill-current"><path d="${icon.path}"/></svg>`;
+            btn.onclick = () => selectIcon(key, btn);
+            iconGrid.appendChild(btn);
+        });
+
+        // --- Event Listeners ---
+
+        // Tabs
+        tabUpload.onclick = () => switchTab('upload');
+        tabIcon.onclick = () => switchTab('icon');
+
+        function switchTab(tab) {
+            activeTab = tab;
+            if (tab === 'upload') {
+                tabUpload.className = 'flex-1 py-1.5 text-xs font-medium rounded-md shadow-sm bg-white text-gray-800 transition';
+                tabIcon.className = 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 transition';
+                panelUpload.classList.remove('hidden');
+                panelIcon.classList.add('hidden');
+            } else {
+                tabUpload.className = 'flex-1 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 transition';
+                tabIcon.className = 'flex-1 py-1.5 text-xs font-medium rounded-md shadow-sm bg-white text-gray-800 transition';
+                panelUpload.classList.add('hidden');
+                panelIcon.classList.remove('hidden');
+            }
+            updateLogoControlsVisibility();
+            generateQR();
+        }
+
+        function selectIcon(key, btn) {
+            // Deselect prev
+            document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+            // Select new
+            btn.classList.add('active');
+            selectedIcon = key;
+            removeIconBtn.classList.remove('hidden');
+            updateLogoControlsVisibility();
+            generateQR();
+        }
+
+        removeIconBtn.onclick = () => {
+            selectedIcon = null;
+            document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+            removeIconBtn.classList.add('hidden');
+            updateLogoControlsVisibility();
+            generateQR();
+        };
+
+        function updateLogoControlsVisibility() {
+            const hasLogo = (activeTab === 'upload' && uploadedLogoImg) || (activeTab === 'icon' && selectedIcon);
+            if (hasLogo) {
+                logoControls.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                logoControls.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+        
+        // Text Input
+        textInput.addEventListener('input', generateQR);
+
+        // Color Inputs
+        colorInput.addEventListener('input', (e) => { colorHex.textContent = e.target.value; generateQR(); });
+        bgColorInput.addEventListener('input', (e) => { bgHex.textContent = e.target.value; generateQR(); });
+        iconColorInput.addEventListener('input', (e) => { iconColorHex.textContent = e.target.value; generateQR(); });
+
+        // Size Inputs
+        sizeInput.addEventListener('input', (e) => { sizeVal.textContent = e.target.value + 'px'; generateQR(); });
+        logoSizeInput.addEventListener('input', (e) => { logoSizeVal.textContent = e.target.value + '%'; generateQR(); });
+
+        // Corner Styles
+        cornerOuterSelect.addEventListener('change', generateQR);
+        cornerInnerSelect.addEventListener('change', generateQR);
+
+        // Logo Upload
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedLogoImg = new Image();
+                    uploadedLogoImg.onload = () => {
+                        fileNameText.textContent = file.name;
+                        fileNameDiv.classList.remove('hidden');
+                        updateLogoControlsVisibility();
+                        generateQR(); 
+                    };
+                    uploadedLogoImg.src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeLogoBtn.addEventListener('click', () => {
+            uploadedLogoImg = null;
+            logoInput.value = '';
+            fileNameDiv.classList.add('hidden');
+            updateLogoControlsVisibility();
+            generateQR();
+        });
+
+        // --- Generation Helpers ---
+
+        // Helper to draw a rounded rectangle path
+        function roundedRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            roundedRectPath(ctx, x, y, width, height, radius);
+            ctx.fill();
+        }
+
+        function drawLeaf(ctx, x, y, width, height) {
+            const radius = width / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y); 
+            ctx.lineTo(x + width, y); 
+            ctx.lineTo(x + width, y + height - radius); 
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); 
+            ctx.lineTo(x, y + height); 
+            ctx.lineTo(x, y + radius); 
+            ctx.quadraticCurveTo(x, y, x + radius, y); 
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawFinder(ctx, x, y, moduleSize, outerType, innerType, color, bgColor) {
+            const size = 7 * moduleSize;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(x, y, size, size); // Clear background for finder
+
+            const center = size / 2;
+            const cx = x + center;
+            const cy = y + center;
+            
+            // Outer Frame
+            ctx.fillStyle = color;
+            if (outerType === 'square') ctx.fillRect(x, y, size, size);
+            else if (outerType === 'rounded') drawRoundedRect(ctx, x, y, size, size, moduleSize * 2);
+            else if (outerType === 'circle') { ctx.beginPath(); ctx.arc(cx, cy, size/2, 0, Math.PI * 2); ctx.fill(); }
+            else if (outerType === 'leaf') drawLeaf(ctx, x, y, size, size);
+
+            // Cut out hole
+            const holeOffset = 1 * moduleSize;
+            const holeSize = 5 * moduleSize;
+            ctx.fillStyle = bgColor;
+            if (outerType === 'square') ctx.fillRect(x + holeOffset, y + holeOffset, holeSize, holeSize);
+            else if (outerType === 'rounded') drawRoundedRect(ctx, x + holeOffset, y + holeOffset, holeSize, holeSize, moduleSize * 1.5);
+            else if (outerType === 'circle') { ctx.beginPath(); ctx.arc(cx, cy, holeSize/2, 0, Math.PI * 2); ctx.fill(); }
+            else if (outerType === 'leaf') drawLeaf(ctx, x + holeOffset, y + holeOffset, holeSize, holeSize);
+
+            // Inner Eye
+            const innerOffset = 2 * moduleSize;
+            const innerSize = 3 * moduleSize;
+            ctx.fillStyle = color;
+            if (innerType === 'square') ctx.fillRect(x + innerOffset, y + innerOffset, innerSize, innerSize);
+            else if (innerType === 'rounded') drawRoundedRect(ctx, x + innerOffset, y + innerOffset, innerSize, innerSize, moduleSize);
+            else if (innerType === 'circle') { ctx.beginPath(); ctx.arc(cx, cy, innerSize/2, 0, Math.PI * 2); ctx.fill(); }
+            else if (innerType === 'diamond') {
+                ctx.beginPath();
+                ctx.moveTo(cx, y + innerOffset);
+                ctx.lineTo(x + innerOffset + innerSize, cy);
+                ctx.lineTo(cx, y + innerOffset + innerSize);
+                ctx.lineTo(x + innerOffset, cy);
+                ctx.closePath();
+                ctx.fill();
+            } else if (innerType === 'star') drawStar(ctx, cx, cy, 5, innerSize/2, innerSize/4);
+        }
+
+        // --- Main Generation Function ---
+        generateBtn.addEventListener('click', generateQR);
+        window.addEventListener('load', generateQR);
+
+        function generateQR() {
+            const text = textInput.value || "https://example.com";
+            const color = colorInput.value;
+            const bg = bgColorInput.value;
+            
+            // Get requested resolution
+            const requestedSize = parseInt(sizeInput.value);
+            // Add padding (5% of requested size) for the "Sticker" look
+            const padding = Math.round(requestedSize * 0.05);
+            const totalSize = requestedSize + (padding * 2);
+            
+            const logoPercent = parseInt(logoSizeInput.value) / 100;
+            const outerShape = cornerOuterSelect.value;
+            const innerShape = cornerInnerSelect.value;
+
+            // Generate QR Matrix
+            let qr;
+            try {
+                qr = qrcode(0, 'H');
+                qr.addData(text);
+                qr.make();
+                if (qr.getModuleCount() < 41) {
+                    qr = qrcode(6, 'H');
+                    qr.addData(text);
+                    qr.make();
+                }
+            } catch(e) {
+                console.error(e);
+                return;
+            }
+
+            // Setup Canvas
+            const moduleCount = qr.getModuleCount();
+            const qrDrawSize = requestedSize;
+            const moduleSize = qrDrawSize / moduleCount;
+
+            // Set actual canvas size to the full resolution
+            qrCanvas.width = totalSize;
+            qrCanvas.height = totalSize;
+            const ctx = qrCanvas.getContext('2d');
+            
+            // 1. Draw Background (Rounded Sticker)
+            ctx.clearRect(0, 0, totalSize, totalSize);
+            ctx.fillStyle = bg;
+            const stickerRadius = totalSize * 0.05; // 5% radius
+            drawRoundedRect(ctx, 0, 0, totalSize, totalSize, stickerRadius);
+
+            // 2. Draw Modules (Shifted by padding)
+            ctx.save();
+            ctx.translate(padding, padding);
+
+            ctx.fillStyle = color;
+            for (let row = 0; row < moduleCount; row++) {
+                for (let col = 0; col < moduleCount; col++) {
+                    if (qr.isDark(row, col)) {
+                        if (row < 7 && col < 7) continue;
+                        if (row < 7 && col >= moduleCount - 7) continue;
+                        if (row >= moduleCount - 7 && col < 7) continue;
+                        
+                        // Ceil logic helps remove gaps at high res
+                        const x = Math.ceil(col * moduleSize);
+                        const y = Math.ceil(row * moduleSize);
+                        const w = Math.ceil((col + 1) * moduleSize) - x;
+                        const h = Math.ceil((row + 1) * moduleSize) - y;
+                        ctx.fillRect(x, y, w, h);
+                    }
+                }
+            }
+
+            // 3. Draw Finders
+            drawFinder(ctx, 0, 0, moduleSize, outerShape, innerShape, color, bg);
+            drawFinder(ctx, Math.ceil((moduleCount - 7) * moduleSize), 0, moduleSize, outerShape, innerShape, color, bg);
+            drawFinder(ctx, 0, Math.ceil((moduleCount - 7) * moduleSize), moduleSize, outerShape, innerShape, color, bg);
+
+            // 4. Center Logo / Icon Logic
+            const hasUpload = activeTab === 'upload' && uploadedLogoImg;
+            const hasIcon = activeTab === 'icon' && selectedIcon;
+
+            if (hasUpload || hasIcon) {
+                const logoSize = qrDrawSize * logoPercent;
+                const logoX = (qrDrawSize - logoSize) / 2;
+                const logoY = (qrDrawSize - logoSize) / 2;
+
+                // Box behind logo
+                ctx.fillStyle = bg;
+                const borderSize = logoSize + (qrDrawSize * 0.02); 
+                const borderX = (qrDrawSize - borderSize) / 2;
+                const borderY = (qrDrawSize - borderSize) / 2;
+                drawRoundedRect(ctx, borderX, borderY, borderSize, borderSize, qrDrawSize * 0.02);
+
+                // Draw Content
+                if (hasUpload) {
+                    ctx.drawImage(uploadedLogoImg, logoX, logoY, logoSize, logoSize);
+                } else if (hasIcon) {
+                    const iconData = ICONS[selectedIcon];
+                    if (iconData) {
+                        ctx.fillStyle = iconColorInput.value;
+                        const vb = iconData.viewbox.split(' ').map(Number);
+                        const vbWidth = vb[2];
+                        const vbHeight = vb[3];
+
+                        ctx.save();
+                        ctx.translate(logoX, logoY);
+                        const scale = logoSize / Math.max(vbWidth, vbHeight);
+                        ctx.scale(scale, scale);
+                        const offsetX = (Math.max(vbWidth, vbHeight) - vbWidth) / 2;
+                        const offsetY = (Math.max(vbWidth, vbHeight) - vbHeight) / 2;
+                        ctx.translate(offsetX, offsetY);
+                        const p = new Path2D(iconData.path);
+                        ctx.fill(p);
+                        ctx.restore();
+                    }
+                }
+            }
+            
+            ctx.restore(); // Undo padding translation
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'qr-forge.png';
+            link.href = qrCanvas.toDataURL("image/png");
+            link.click();
+        });
+
+    </script>
+</body>
+</html>
